@@ -1,55 +1,112 @@
-if (window.isDomScreenshoterActive) {
-} else {
+(function () {
+  "use strict";
+
+  if (window.isDomScreenshoterActive) return;
   window.isDomScreenshoterActive = true;
-  // --- 配置参数 ---
-  // 截图边距设置（单位：像素）
-  const SCREENSHOT_PADDING = 10;
 
-  // 截图延迟时间（毫秒），确保高亮框完全消失
-  const SCREENSHOT_DELAY = 100;
+  const DEFAULT_CONFIG = {
+    screenshotPadding: 10,
+    screenshotDelay: 100,
+    qualityEnhancementFactor: 2.0,
+  };
 
-  // 质量增强因子（2.0表示图像尺寸扩大为原来的2倍）
-  const QUALITY_ENHANCEMENT_FACTOR = 2.0;
+  let config = DEFAULT_CONFIG;
+  let overlay, hintElement, currentTarget;
+  let handlers = {};
 
-  const overlay = document.createElement("div");
-  overlay.id = "dom-screenshoter-overlay";
-  Object.assign(overlay.style, {
-    position: "absolute",
-    border: "2px dashed #007bff",
-    backgroundColor: "rgba(0, 123, 255, 0.2)",
-    borderRadius: "0.25rem",
-    boxSizing: "border-box",
-    pointerEvents: "none",
-    zIndex: "999999999",
-  });
-  document.body.appendChild(overlay);
+  chrome.storage.sync
+    .get(DEFAULT_CONFIG)
+    .then((items) => {
+      config = items;
+      initializeScreenshoter();
+    })
+    .catch(() => {
+      initializeScreenshoter();
+    });
 
-  // 添加操作提示
-  const hintElement = document.createElement("div");
-  hintElement.id = "dom-screenshoter-hint";
-  Object.assign(hintElement.style, {
-    position: "fixed",
-    bottom: "10px",
-    left: "50%",
-    transform: "translateX(-50%)",
-    backgroundColor: "rgba(0, 0, 0, 0.7)",
-    color: "white",
-    padding: "6px 12px",
-    borderRadius: "4px",
-    zIndex: "9999999998",
-    fontFamily: "Arial, sans-serif",
-    fontSize: "13px",
-    textAlign: "center",
-    pointerEvents: "none",
-    userSelect: "none",
-  });
-  hintElement.textContent = "左键点击截图 | 右键点击退出";
-  document.body.appendChild(hintElement);
+  function createOverlay() {
+    const overlay = document.createElement("div");
+    overlay.id = "dom-screenshoter-overlay";
+    overlay.style.cssText = `
+      position: absolute;
+      border: 2px dashed #007bff;
+      background-color: rgba(0, 123, 255, 0.2);
+      border-radius: 0.25rem;
+      box-sizing: border-box;
+      pointer-events: none;
+      z-index: 999999999;
+      display: none;
+    `;
+    return overlay;
+  }
 
-  let currentTarget = null;
+  function createHintElement() {
+    const hint = document.createElement("div");
+    hint.id = "dom-screenshoter-hint";
+    hint.textContent = "左键点击截图 | 右键点击退出";
+    hint.style.cssText = `
+      position: fixed;
+      bottom: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      background-color: rgba(0, 0, 0, 0.8);
+      color: white;
+      padding: 8px 16px;
+      border-radius: 4px;
+      z-index: 9999999998;
+      font: 13px Arial, sans-serif;
+      text-align: center;
+      pointer-events: none;
+      user-select: none;
+    `;
+    return hint;
+  }
 
-  const mouseoverHandler = (e) => {
-    e.stopPropagation();
+  function updateOverlayPosition(rect) {
+    if (!overlay) return;
+
+    overlay.style.cssText += `
+      display: block;
+      width: ${rect.width}px;
+      height: ${rect.height}px;
+      top: ${rect.top + window.scrollY}px;
+      left: ${rect.left + window.scrollX}px;
+    `;
+  }
+
+  function showStatus(message, isError = false) {
+    const status = document.createElement("div");
+    status.textContent = message;
+    status.style.cssText = `
+      position: fixed;
+      bottom: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      background-color: rgba(${isError ? "255, 0, 0" : "0, 0, 0"}, 0.8);
+      color: white;
+      padding: 8px 16px;
+      border-radius: 4px;
+      z-index: 9999999998;
+      font: 13px Arial, sans-serif;
+      text-align: center;
+      pointer-events: none;
+      user-select: none;
+    `;
+
+    document.body.appendChild(status);
+
+    setTimeout(
+      () => {
+        status.remove();
+        if (!isError) window.isDomScreenshoterActive = false;
+      },
+      isError ? 3000 : 2000
+    );
+
+    return status;
+  }
+
+  handlers.mouseover = function (e) {
     const target = e.target;
     if (
       target === overlay ||
@@ -59,157 +116,115 @@ if (window.isDomScreenshoterActive) {
     ) {
       return;
     }
-    currentTarget = target;
-    const rect = target.getBoundingClientRect();
 
-    Object.assign(overlay.style, {
-      width: `${rect.width}px`,
-      height: `${rect.height}px`,
-      top: `${rect.top + window.scrollY}px`,
-      left: `${rect.left + window.scrollX}px`,
-    });
+    currentTarget = target;
+    updateOverlayPosition(target.getBoundingClientRect());
   };
 
-  const clickHandler = (e) => {
+  handlers.click = function (e) {
     e.preventDefault();
     e.stopPropagation();
 
-    // 右键点击退出
     if (e.button === 2) {
       cleanup();
       return;
     }
 
-    // 左键点击截图
     if (e.button === 0 && currentTarget) {
-      const rect = currentTarget.getBoundingClientRect();
-      const selectedElement = currentTarget;
-      document.removeEventListener("mouseover", mouseoverHandler);
-      document.removeEventListener("click", clickHandler, true);
-      document.removeEventListener("contextmenu", contextMenuHandler, true);
-
-      if (overlay && overlay.parentNode) {
-        overlay.parentNode.removeChild(overlay);
-      }
-
-      if (hintElement && hintElement.parentNode) {
-        hintElement.parentNode.removeChild(hintElement);
-      }
-
-      const statusElement = document.createElement("div");
-      Object.assign(statusElement.style, {
-        position: "fixed",
-        bottom: "20px",
-        left: "50%",
-        transform: "translateX(-50%)",
-        backgroundColor: "rgba(0, 0, 0, 0.7)",
-        color: "white",
-        padding: "8px 16px",
-        borderRadius: "4px",
-        zIndex: "9999999999",
-      });
-      statusElement.textContent = "正在处理截图";
-      document.body.appendChild(statusElement);
-
-      setTimeout(() => {
-        const paddedRect = {
-          left: Math.max(0, rect.left - SCREENSHOT_PADDING),
-          top: Math.max(0, rect.top - SCREENSHOT_PADDING),
-          width: rect.width + SCREENSHOT_PADDING * 2,
-          height: rect.height + SCREENSHOT_PADDING * 2,
-        };
-        try {
-          chrome.runtime.sendMessage(
-            {
-              action: "captureAndDownload",
-              rect: paddedRect,
-              originalRect: rect,
-              devicePixelRatio: window.devicePixelRatio,
-              url: window.location.href,
-              enhancementFactor: QUALITY_ENHANCEMENT_FACTOR,
-            },
-            (response) => {
-              if (chrome.runtime.lastError) {
-                statusElement.textContent =
-                  "截图失败: " + chrome.runtime.lastError.message;
-                statusElement.style.backgroundColor = "rgba(255, 0, 0, 0.7)";
-              } else if (response && response.success) {
-                statusElement.textContent = `截图成功! 正在下载图像`;
-              } else {
-                statusElement.textContent =
-                  "截图失败: " + (response?.message || "未知错误");
-                statusElement.style.backgroundColor = "rgba(255, 0, 0, 0.7)";
-              }
-
-              setTimeout(() => {
-                statusElement.remove();
-                window.isDomScreenshoterActive = false;
-              }, 3000);
-            }
-          );
-        } catch (err) {
-          statusElement.textContent = "发送消息时出错: " + err.message;
-          statusElement.style.backgroundColor = "rgba(255, 0, 0, 0.7)";
-
-          setTimeout(() => {
-            statusElement.remove();
-            window.isDomScreenshoterActive = false;
-          }, 3000);
-        }
-      }, SCREENSHOT_DELAY);
+      captureElement(currentTarget);
     }
   };
 
-  // 处理右键菜单事件
-  const contextMenuHandler = (e) => {
+  handlers.contextmenu = function (e) {
     e.preventDefault();
     e.stopPropagation();
     cleanup();
     return false;
   };
 
-  const cleanup = () => {
-    document.removeEventListener("mouseover", mouseoverHandler);
-    document.removeEventListener("click", clickHandler, true);
-    document.removeEventListener("contextmenu", contextMenuHandler, true);
+  async function captureElement(element) {
+    const rect = element.getBoundingClientRect();
 
-    if (overlay && overlay.parentNode) {
-      overlay.parentNode.removeChild(overlay);
-    }
+    removeEventListeners();
+    removeUIElements();
 
-    if (hintElement && hintElement.parentNode) {
-      hintElement.parentNode.removeChild(hintElement);
-    }
+    const status = showStatus("正在处理截图");
 
-    window.isDomScreenshoterActive = false;
+    await new Promise((resolve) => requestAnimationFrame(resolve));
 
-    // 创建一个快速反馈提示
-    const feedbackElement = document.createElement("div");
-    Object.assign(feedbackElement.style, {
-      position: "fixed",
-      bottom: "20px",
-      left: "50%",
-      transform: "translateX(-50%)",
-      backgroundColor: "rgba(0, 0, 0, 0.7)",
-      color: "white",
-      padding: "8px 16px",
-      borderRadius: "4px",
-      zIndex: "9999999999",
-      fontFamily: "Arial, sans-serif",
-      opacity: "1",
-      transition: "opacity 0.5s ease",
+    setTimeout(async () => {
+      status.style.display = "none";
+
+      const paddedRect = {
+        left: Math.max(0, rect.left - config.screenshotPadding),
+        top: Math.max(0, rect.top - config.screenshotPadding),
+        width: rect.width + config.screenshotPadding * 2,
+        height: rect.height + config.screenshotPadding * 2,
+      };
+
+      try {
+        const response = await chrome.runtime.sendMessage({
+          action: "captureAndDownload",
+          rect: paddedRect,
+          originalRect: rect,
+          devicePixelRatio: window.devicePixelRatio,
+          url: window.location.href,
+          enhancementFactor: config.qualityEnhancementFactor,
+        });
+
+        status.style.display = "";
+
+        if (response?.success) {
+          status.textContent = "截图成功! 正在下载图像";
+          status.style.backgroundColor = "rgba(0, 128, 0, 0.8)";
+        } else {
+          throw new Error(response?.message || "未知错误");
+        }
+      } catch (error) {
+        status.style.display = "";
+        status.textContent = "截图失败: " + error.message;
+        status.style.backgroundColor = "rgba(255, 0, 0, 0.8)";
+      }
+    }, config.screenshotDelay);
+  }
+
+  function addEventListeners() {
+    document.addEventListener("mouseover", handlers.mouseover, {
+      passive: true,
     });
-    feedbackElement.textContent = "已退出截图模式";
-    document.body.appendChild(feedbackElement);
+    document.addEventListener("click", handlers.click, true);
+    document.addEventListener("contextmenu", handlers.contextmenu, true);
+  }
 
-    // 淡出效果
-    setTimeout(() => {
-      feedbackElement.style.opacity = "0";
-      setTimeout(() => feedbackElement.remove(), 500);
-    }, 1000);
-  };
+  function removeEventListeners() {
+    document.removeEventListener("mouseover", handlers.mouseover);
+    document.removeEventListener("click", handlers.click, true);
+    document.removeEventListener("contextmenu", handlers.contextmenu, true);
+  }
 
-  document.addEventListener("mouseover", mouseoverHandler);
-  document.addEventListener("click", clickHandler, true);
-  document.addEventListener("contextmenu", contextMenuHandler, true);
-}
+  function removeUIElements() {
+    overlay?.remove();
+    hintElement?.remove();
+  }
+
+  function cleanup() {
+    removeEventListeners();
+    removeUIElements();
+    window.isDomScreenshoterActive = false;
+    showStatus("已退出元素选择模式");
+  }
+
+  function initializeScreenshoter() {
+    overlay = createOverlay();
+    hintElement = createHintElement();
+
+    document.body.appendChild(overlay);
+    document.body.appendChild(hintElement);
+
+    addEventListeners();
+  }
+
+  window.addEventListener("beforeunload", () => {
+    window.isDomScreenshoterActive = false;
+  });
+})();

@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>元素拍照 配置页</title>
+    <style>
+      body {
+        font-family: "Microsoft YaHei", sans-serif;
+        margin: 0;
+        padding: 20px;
+        color: #333;
+        background-color: #f8f9fa;
+      }
+      .container {
+        max-width: 600px;
+        margin: 0 auto;
+        background-color: #fff;
+        border-radius: 8px;
+        padding: 20px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      }
+      h1 {
+        color: #007bff;
+        border-bottom: 1px solid #eee;
+        padding-bottom: 10px;
+        margin-top: 0;
+      }
+      .form-group {
+        margin-bottom: 15px;
+      }
+      label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: bold;
+      }
+      input[type="number"] {
+        width: 100px;
+        padding: 8px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+      }
+      .description {
+        font-size: 0.9em;
+        color: #666;
+        margin-top: 5px;
+      }
+      .save-btn {
+        background-color: #007bff;
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 16px;
+        transition: background-color 0.3s;
+      }
+      .save-btn:hover {
+        background-color: #0069d9;
+      }
+      .status {
+        margin-top: 15px;
+        padding: 10px;
+        border-radius: 4px;
+        display: none;
+      }
+      .success {
+        background-color: #d4edda;
+        color: #155724;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>元素拍照 配置</h1>
+      <div class="form-group">
+        <label for="screenshotPadding">截图边距设置（px）</label>
+        <input type="number" id="screenshotPadding" min="0" />
+        <div class="description">选中元素的周围边距</div>
+      </div>
+      <div class="form-group">
+        <label for="screenshotDelay">截图延迟时间（ms）</label>
+        <input type="number" id="screenshotDelay" min="0" />
+        <div class="description">点击后延迟截图的时间</div>
+      </div>
+      <div class="form-group">
+        <label for="qualityEnhancementFactor">质量增强因子</label>
+        <input
+          type="number"
+          id="qualityEnhancementFactor"
+          min="1"
+          max="4"
+          step="0.1"
+        />
+        <div class="description">图像尺寸扩大的倍数（1.0为原始尺寸）</div>
+      </div>
+      <button class="save-btn" id="saveSettings">保存设置</button>
+      <div class="status" id="status"></div>
+    </div>
+    <script src="options.js"></script>
+  </body>
+</html>

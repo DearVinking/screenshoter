@@ -1,6 +1,6 @@
 {
-  "name": "DOM 元素截图器",
-  "description": "在页面上选择任何 DOM 元素，点击即可截图并下载。",
+  "name": "元素拍照",
+  "description": "在页面上选择任何 DOM 元素，点击即可截图并下载",
   "version": "1.0.7",
   "manifest_version": 3,
   "permissions": ["activeTab", "scripting", "downloads", "storage"],
@@ -16,6 +16,7 @@
     },
     "default_title": "点击开始选择元素"
   },
+  "options_page": "options.html",
   "icons": {
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",
