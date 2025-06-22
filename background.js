@@ -5,7 +5,7 @@ chrome.action.onClicked.addListener(async (tab) => {
       files: ["content.js"],
     });
   } catch (error) {
-    console.error("内容脚本注入失败:", error);
+    console.log("内容脚本注入失败:", error);
   }
 });
 
@@ -137,7 +137,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         downloadId,
       });
     } catch (error) {
-      console.error("截图处理错误:", error);
+      console.log("截图处理错误:", error);
       sendResponse({
         success: false,
         message: error.message || "处理截图时发生错误",
