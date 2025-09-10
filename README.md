@@ -1,12 +1,12 @@
-# 元素拍照
+# ScreenShoter
 
 <p align="center">
-  <img src="icons/icon128.png" width="128" height="128" alt="元素拍照图标">
+  <img src="icons/icon128.png" width="128" height="128" alt="ScreenShoter图标">
 </p>
 
 ## 📝 项目简介
 
-元素拍照是一个轻量级的 Chrome 浏览器扩展，允许在网页上选择任意 DOM 元素并快速生成截图。
+ScreenShoter是一个轻量级的 Chrome 浏览器扩展，允许在网页上选择任意 DOM 元素并快速生成截图。
 
 ## ✨ 主要特点
 
